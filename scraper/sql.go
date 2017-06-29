@@ -1,10 +1,11 @@
-package main
+package scraper
 
 import (
 	"database/sql"
 	"fmt"
 	"math/rand"
 	"time"
+	//	"github.com/NyaaPantsu/scraper/config"
 )
 
 const (

@@ -1,4 +1,4 @@
-package main
+package scraper
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NyaaPantsu/scrapers/config"
 	"github.com/PuerkitoBio/goquery"
 	_ "github.com/lib/pq"
 	"golang.org/x/net/html"
@@ -236,7 +237,7 @@ func timer(start time.Time, name string) {
 	log.Printf("%s took %s", name, elapsed)
 }
 
-func main() {
+func New(conf *config.Scraper) {
 
 	//Channels
 	chFinished := make(chan bool)          //So we know when to exit
@@ -259,35 +260,16 @@ func main() {
 	*/
 
 	defer timer(time.Now(), "Execution")
-	numWorkers, err := strconv.Atoi(os.Args[1])
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	numMaxPages, err := strconv.Atoi(os.Args[2])
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	numAnidexOffset, err := strconv.Atoi(os.Args[3])
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	numNyaaOffset, err := strconv.Atoi(os.Args[4])
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	seedUrls := os.Args[5:]
+	numWorkers := conf.NumWorkers
+	numMaxPages := conf.MaxPages
+	numAnidexOffset := conf.Anidex_Offset
+	numNyaaOffset := conf.Nyaasi_Offset
 
 	//Start crawling
-	for _, url := range seedUrls {
-		if strings.Contains(url, "anidex") {
-			go crawlMain(url, numMaxPages, numAnidexOffset, chNyaaURL, chAnidexURL, chFinished, chURLCount)
-		} else if strings.Contains(url, "nyaa") {
-			go crawlMain(url, numMaxPages, numNyaaOffset, chNyaaURL, chAnidexURL, chFinished, chURLCount)
-		}
+	if conf.Anidex {
+		go crawlMain("https://anidex.info", numMaxPages, numAnidexOffset, chNyaaURL, chAnidexURL, chFinished, chURLCount)
+	} else if conf.Nyaasi {
+		go crawlMain("https://nyaa.si", numMaxPages, numNyaaOffset, chNyaaURL, chAnidexURL, chFinished, chURLCount)
 	}
 
 	//Start child workers

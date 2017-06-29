@@ -1,4 +1,4 @@
-package scraperService
+package stats
 
 import (
 	"math/rand"

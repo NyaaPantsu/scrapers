@@ -4,12 +4,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NyaaPantsu/nyaa/config"
 	"github.com/NyaaPantsu/nyaa/db"
 	"github.com/NyaaPantsu/nyaa/model"
 	serviceBase "github.com/NyaaPantsu/nyaa/service"
 	torrentService "github.com/NyaaPantsu/nyaa/service/torrent"
 	"github.com/NyaaPantsu/nyaa/util/log"
+	"github.com/NyaaPantsu/scrapers/config"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"golang.org/x/time/rate"
@@ -36,7 +36,7 @@ type MetainfoFetcher struct {
 }
 
 // New : Creates a MetainfoFetcher struct
-func New(fetcherConfig *config.MetainfoFetcherConfig) (*MetainfoFetcher, error) {
+func New(fetcherConfig *config.MetainfoFetcher) (*MetainfoFetcher, error) {
 	clientConfig := torrent.Config{}
 
 	// Well, it seems this is the right way to convert speed -> rate.Limiter
