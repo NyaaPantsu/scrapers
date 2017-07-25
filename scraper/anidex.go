@@ -13,7 +13,7 @@ import (
 )
 
 const (
-		anidexAdultCategories := map[string][]int{
+	anidexAdultCategories = map[string][]int{
 		"Anime - Sub":  []int{1, 1},
 		"Anime - Raw":  []int{1, 1},
 		"Anime - Dub":  []int{1, 1},
@@ -29,7 +29,7 @@ const (
 		"Adult Video":  []int{2, 2},
 		"Other":        []int{7, 1},
 	}
-	anidexCategories := map[string][]int{
+	anidexCategories = map[string][]int{
 		"Anime - Sub":  []int{3, 5},
 		"Anime - Raw":  []int{3, 6},
 		"Anime - Dub":  []int{3, 5},
@@ -47,7 +47,7 @@ const (
 		"Adult Video":  []int{2, 2},
 		"Other":        []int{7, 1},
 	}
-	anidexFileSizes := map[string]int{
+	anidexFileSizes = map[string]int{
 		"GB": 3,
 		"MB": 2,
 		"KB": 1,
@@ -95,7 +95,6 @@ func getAnidexMax(b []byte) int {
 
 //anidexChild crawls anidex torrent pages for relevant info
 func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
-
 
 	for pageID := range chPageID {
 		var info Torrent

@@ -2,15 +2,21 @@ package scraper
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"golang.org/x/net/html"
+
+	"github.com/PuerkitoBio/goquery"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 )
 
 const (
-	nyaaCategoryMap := map[string][]int{
+	nyaaCategoryMap = map[string][]int{
 		"Art - Anime":                          []int{1, 1},
 		"Art - Doujinshi":                      []int{1, 2},
 		"Art - Games":                          []int{1, 3},
@@ -68,8 +74,78 @@ const (
 	Software - Games
 */
 
-func nyaaBuildStruct(n nyaaJSON, url string) (info Torrent) {
+//nyaaParent crawls nyaa.si main pages to get torrent IDs
+//startOffset is the page to start scraping on
+//pageMax is the maximum number of pages we want to scrape
+func nyaaParents(startOffset, pageMax int) {
+	nyaaPage := startOffset
 
+	//I'm pretty sure there's a way to do this without an iterator
+	for i := 0; i < pageMax; i++ {
+		nyaaURL := baseURL + "/?p=" + strconv.Itoa(nyaaPage)
+		nyaaPage++
+		response, err := http.Get(nyaaURL)
+		if err != nil {
+			fmt.Println("ERROR: Failed to crawl\"" + nyaaURL + "\"")
+			response.Body.Close()
+			break
+		}
+		b, _ := ioutil.ReadAll(response.Body)
+		tokenizer = html.NewTokenizer(strings.NewReader(string(b)))
+		response.Body.Close() //close body when func returns
+
+		//TODO: This really should be its own function
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(b)))
+		if err != nil {
+			fmt.Println("Errored checking for Nyaa.si 404", err)
+			return
+		}
+		is404 := doc.Find("div.container:nth-child(2) > h1:nth-child(1)").Text()
+		if is404 == "404 Not Found" {
+			fmt.Println("Found 404, exiting crawler")
+			chFinished <- true
+			return
+		}
+		parsePageMain(tokenizer)
+	}
+}
+
+//nyaaChild leverages their API for torrent info
+func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
+	for url := range chNyaaURL {
+		n, err := nyaaAPI(url)
+		if err != nil {
+			fmt.Println(err, "on page", url)
+		}
+
+		info := nyaaBuildStruct(n, url)
+
+		if len(info.Description) < 1 {
+			info.Description = "No description found"
+		}
+
+		if len(info.Uploader) < 2 {
+			info.Uploader = "Anonymous"
+		}
+
+		//If any key info was missed, send it back and rescrape it
+		if len(info.Title) < 2 || len(info.Hash) == 0 || len(info.Magnet) == 0 {
+			fmt.Println("Nyaa scrape failed, missing title, hash, or magnet link." +
+				"Pushing to end of queue")
+			chNyaaURL <- url
+			continue
+		}
+
+		for len(chTorrent) == cap(chTorrent) {
+			fmt.Println("Torrent channel full, sleeping 3 seconds")
+			time.Sleep(time.Millisecond * 3000)
+		}
+
+		chTorrent <- info
+	}
+}
+
+func nyaaBuildStruct(n nyaaJSON, url string) (info Torrent) {
 	info.Source = url
 	info.Title = n.Name
 	info.Uploader = n.Uploader
@@ -100,39 +176,4 @@ func nyaaBuildStruct(n nyaaJSON, url string) (info Torrent) {
 	b := bluemonday.UGCPolicy().SanitizeBytes(unsafe)
 	info.Description = string(b)
 	return
-}
-
-//nyaaChild crawls nyaa.si torrent pages for relevant info
-func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
-	for url := range chNyaaURL {
-		n, err := nyaaAPI(url)
-		if err != nil {
-			fmt.Println(err, "on page", url)
-		}
-
-		info := nyaaBuildStruct(n, url)
-
-		if len(info.Description) < 1 {
-			info.Description = "No description found"
-		}
-
-		if len(info.Uploader) < 2 {
-			info.Uploader = "Anonymous"
-		}
-
-		//If any key info was missed, send it back and rescrape it
-		if len(info.Title) < 2 || len(info.Hash) == 0 || len(info.Magnet) == 0 {
-			fmt.Println("Nyaa scrape failed, missing title hash or magnet link." +
-				"Pushing to end of queue")
-			chNyaaURL <- url
-			continue
-		}
-
-		for len(chTorrent) == cap(chTorrent) {
-			fmt.Println("Torrent channel full, sleeping 3 seconds")
-			time.Sleep(time.Millisecond * 3000)
-		}
-
-		chTorrent <- info
-	}
 }
