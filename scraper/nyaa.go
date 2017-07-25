@@ -9,6 +9,35 @@ import (
 	"github.com/russross/blackfriday"
 )
 
+const (
+	nyaaCategoryMap := map[string][]int{
+		"Art - Anime":                          []int{1, 1},
+		"Art - Doujinshi":                      []int{1, 2},
+		"Art - Games":                          []int{1, 3},
+		"Art - Manga":                          []int{1, 4},
+		"Art - Pictures":                       []int{1, 5},
+		"Real Life - Photobooks and Pictures":  []int{2, 1},
+		"Real Life - Videos":                   []int{2, 2},
+		"Anime - Anime Music Video":            []int{3, 12},
+		"Anime - English-translated":           []int{3, 5},
+		"Anime - Non-English-translated":       []int{3, 13},
+		"Anime - Raw":                          []int{3, 6},
+		"Audio - Lossless":                     []int{2, 3},
+		"Audio - Lossy":                        []int{2, 4},
+		"Literature - English-translated":      []int{4, 7},
+		"Literature - Non-English-translated":  []int{4, 14},
+		"Literature - Raw":                     []int{4, 8},
+		"Live Action - English-translated":     []int{5, 9},
+		"Live Action - Idol/Promotional Video": []int{5, 10},
+		"Live Action - Non-English-translated": []int{5, 18},
+		"Live Action - Raw":                    []int{5, 11},
+		"Pictures - Graphics":                  []int{6, 15},
+		"Pictures - Photos":                    []int{6, 16},
+		"Software - Applications":              []int{1, 1},
+		"Software - Games":                     []int{1, 2},
+	}
+)
+
 /*
 	### Nyaa.si adult categories ###
 	Art - Anime
@@ -39,7 +68,7 @@ import (
 	Software - Games
 */
 
-func nyaaBuildStruct(n nyaaJSON, url string, categories map[string][]int) (info Torrent) {
+func nyaaBuildStruct(n nyaaJSON, url string) (info Torrent) {
 
 	info.Source = url
 	info.Title = n.Name
@@ -64,7 +93,7 @@ func nyaaBuildStruct(n nyaaJSON, url string, categories map[string][]int) (info 
 
 	//Join the api (sub)category with - to map it easier
 	category := n.MainCategory + " - " + n.SubCategory
-	copy(info.Category[:2], categories[category][:2])
+	copy(info.Category[:2], nyaaCategoryMap[category][:2])
 
 	//Convert the api markdown description to sanitized HTML
 	unsafe := blackfriday.MarkdownCommon([]byte(n.Description))
@@ -75,41 +104,13 @@ func nyaaBuildStruct(n nyaaJSON, url string, categories map[string][]int) (info 
 
 //nyaaChild crawls nyaa.si torrent pages for relevant info
 func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
-
-	categoryInts := map[string][]int{
-		"Art - Anime":                          []int{1, 1},
-		"Art - Doujinshi":                      []int{1, 2},
-		"Art - Games":                          []int{1, 3},
-		"Art - Manga":                          []int{1, 4},
-		"Art - Pictures":                       []int{1, 5},
-		"Real Life - Photobooks and Pictures":  []int{2, 1},
-		"Real Life - Videos":                   []int{2, 2},
-		"Anime - Anime Music Video":            []int{3, 12},
-		"Anime - English-translated":           []int{3, 5},
-		"Anime - Non-English-translated":       []int{3, 13},
-		"Anime - Raw":                          []int{3, 6},
-		"Audio - Lossless":                     []int{2, 3},
-		"Audio - Lossy":                        []int{2, 4},
-		"Literature - English-translated":      []int{4, 7},
-		"Literature - Non-English-translated":  []int{4, 14},
-		"Literature - Raw":                     []int{4, 8},
-		"Live Action - English-translated":     []int{5, 9},
-		"Live Action - Idol/Promotional Video": []int{5, 10},
-		"Live Action - Non-English-translated": []int{5, 18},
-		"Live Action - Raw":                    []int{5, 11},
-		"Pictures - Graphics":                  []int{6, 15},
-		"Pictures - Photos":                    []int{6, 16},
-		"Software - Applications":              []int{1, 1},
-		"Software - Games":                     []int{1, 2},
-	}
-
 	for url := range chNyaaURL {
 		n, err := nyaaAPI(url)
 		if err != nil {
 			fmt.Println(err, "on page", url)
 		}
 
-		info := nyaaBuildStruct(n, url, categoryInts)
+		info := nyaaBuildStruct(n, url)
 
 		if len(info.Description) < 1 {
 			info.Description = "No description found"

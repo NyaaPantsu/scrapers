@@ -19,7 +19,6 @@ const (
 
 //sqlHashExists returns a boolean on whether or not the hash is already in the table
 func sqlHashExists(db *sql.DB, hash, table string) bool {
-
 	sqlTorrentQuery := `SELECT torrent_hash FROM ` + table + ` WHERE torrent_hash=$1;`
 	var torrentHash string
 	row := db.QueryRow(sqlTorrentQuery, hash)
@@ -36,36 +35,48 @@ func sqlHashExists(db *sql.DB, hash, table string) bool {
 	}
 }
 
+//sqlTorrentInsert does what it says on the tin
 func sqlTorrentInsert(db *sql.DB, torrent Torrent, table string) {
-	sqlTorrentInsert := `INSERT INTO ` + table + ` (torrent_name, torrent_hash, category, sub_category,` +
-		`status, date, uploader, downloads, stardom, filesize, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
-	_, err := db.Exec(sqlTorrentInsert, torrent.Title, torrent.Hash, torrent.Category[0], torrent.Category[1],
-		0, torrent.Date, torrent.UploaderID, 0, 0, torrent.FileSize, torrent.Description)
+	sqlTorrentInsert := `INSERT INTO ` + table + ` (torrent_name, torrent_hash, 
+		category, sub_category, status, date, uploader, downloads, stardom, 
+		filesize, description, seeders, leechers, completed, last_scrape) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
+	_, err := db.Exec(sqlTorrentInsert, torrent.Title, torrent.Hash,
+		torrent.Category[0], torrent.Category[1], 0, torrent.Date,
+		torrent.UploaderID, 0, 0, torrent.FileSize, torrent.Description,
+		torrent.Seeders, torrent.Leechers, torrent.Completed, time.Now())
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println("Inserted", torrent.Hash, "into DB!")
 }
 
-func sqlUserExists(db *sql.DB, username string) (userID int) {
-	sqlUserQuery := `SELECT user_id FROM public.users WHERE username=$1;`
+//sqlUserExists does what it says on the tin
+//If the user doesnt exist, attempts an insert
+//Returns the userID and userStatus
+func sqlUserExists(db *sql.DB, username string) (userID, userStatus int) {
+	sqlUserQuery := `SELECT user_id, status FROM public.users WHERE username=$1;`
 	row := db.QueryRow(sqlUserQuery, username)
-	switch err := row.Scan(&userID); err {
+	switch err := row.Scan(&userID, &userStatus); err {
 	case sql.ErrNoRows:
 		fmt.Println("User not found, attempting insert")
-		return 0
+		userID = sqlUserInsert(db, username)
+		userStatus = 3
+		return
 	case nil:
 		fmt.Println("User found, checking hash")
-		return userID
+		return
 	default:
 		fmt.Println(err)
-		return userID
+		return
 	}
 }
 
+//TODO: returning sqlUserExists *might* cause some kind of weird stack recursion from the changes I've made
 func sqlUserInsert(db *sql.DB, username string) (userID int) {
-	sqlUserInsert := `INSERT INTO public.users (username, password, status, created_at, api_token_expiry)
-		VALUES ($1, $2, $3, $4, $5)`
+	sqlUserInsert := `INSERT INTO public.users (username, password, status, 
+			created_at, api_token_expiry) VALUES ($1, $2, $3, $4, $5)`
+
 	//Status is hardcoded to 3, as that means it was a scraped user
 	_, err := db.Exec(sqlUserInsert, username, RandPassword(), 3, time.Now(), time.Now())
 	if err != nil {
@@ -105,18 +116,16 @@ func sqlWorker(chTorrent <-chan Torrent, chFinished chan<- bool, chInsertCount c
 	fmt.Println("Connected!")
 
 	var table string
+	var userStatus int
 	for torrent := range chTorrent {
 
 		//Check if the user exists first
 		//Special condition for nyaa.si anonymous uploads
 		if torrent.Uploader != "Anonymous" {
-			if userID := sqlUserExists(db, torrent.Uploader); userID == 0 {
-				torrent.UploaderID = sqlUserInsert(db, torrent.Uploader)
-			} else {
-				torrent.UploaderID = userID
-			}
+			torrent.UploaderID, userStatus = sqlUserInsert(db, torrent.Uploader)
 		} else {
 			torrent.UploaderID = 0
+			userStatus = 3 //Anonymous username means we scraped it
 		}
 
 		//Determine the table we want
@@ -126,14 +135,11 @@ func sqlWorker(chTorrent <-chan Torrent, chFinished chan<- bool, chInsertCount c
 			table = "public.torrents"
 		}
 
-		if !sqlHashExists(db, torrent.Hash, table) {
-			//If the hash doesnt exist, run an insert
+		//If our user was scraped and the hash doesnt exist, insert
+		if userStatus == 3 && !sqlHashExists(db, torrent.Hash, table) {
 			sqlTorrentInsert(db, torrent, table)
-			chInsertCount <- 1
-		} else {
-			//Otherwise send an int to count it towards our total scrape
-			chFoundCount <- 1
 		}
+		chInsertCount <- 1 //Tracker to ensure we've attempted every hash we find
 	}
 	fmt.Println("Exiting SQL worker")
 }

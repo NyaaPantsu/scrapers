@@ -57,10 +57,8 @@ func nyaaAPI(url string) (n nyaaJSON, err error) {
 		return
 	}
 
+	//Read that garbage, then unwrap it into a usable struct
 	b, _ := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(b, &n)
-	if err != nil {
-		return
-	}
 	return
 }
