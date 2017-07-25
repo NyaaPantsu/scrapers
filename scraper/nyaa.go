@@ -77,7 +77,7 @@ const (
 //nyaaParent crawls nyaa.si main pages to get torrent IDs
 //startOffset is the page to start scraping on
 //pageMax is the maximum number of pages we want to scrape
-func nyaaParents(startOffset, pageMax int) {
+func nyaaParents(startOffset, pageMax int, chNyaaURL chan<- string, chFin chan<- bool, chCount chan<- int) {
 	nyaaPage := startOffset
 
 	//I'm pretty sure there's a way to do this without an iterator
@@ -106,7 +106,7 @@ func nyaaParents(startOffset, pageMax int) {
 			chFinished <- true
 			return
 		}
-		parsePageMain(tokenizer)
+		parsePageMain(tokenizer, chNyaaURL, chFin, chCount)
 	}
 }
 

@@ -19,7 +19,7 @@ func getHrefMain(tok html.Token) (ok bool, href string) {
 	return //implicit signature return
 }
 
-func parsePageMain(tokenizer html.Tokenizer) {
+func parsePageMain(tokenizer html.Tokenizer, chURL chan<- string, chFin chan<- bool, chCount chan<- int) {
 	var leave bool
 
 	for {
@@ -47,21 +47,22 @@ func parsePageMain(tokenizer html.Tokenizer) {
 				continue
 			}
 
+			//TODO: Factor this more cleanly
 			//var names correspond to their respective sites
 			nyaaSi := strings.Index(url, "/view") == 0
 			anidex := strings.Index(url, "?page=torrent&id=") == 0
 			if nyaaSi {
-				for len(chNyaaURL) == cap(chAnidexURL) {
+				for len(chUrl) == cap(chUrl) {
 					fmt.Println("Nyaa channel full, sleeping 3 seconds")
 					time.Sleep(time.Millisecond * 3000)
 				}
-				chNyaaURL <- baseURL + url
+				chUrl <- baseURL + url
 				chURLCount <- 1
 				childPageCount++
 				continue
 			}
 			if anidex {
-				for len(chAnidexURL) == cap(chAnidexURL) {
+				for len(chURL) == cap(chURL) {
 					fmt.Println("Anidex channel full, sleeping 3 seconds")
 					time.Sleep(time.Millisecond * 3000)
 				}
