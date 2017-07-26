@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/NyaaPantsu/scrapers/config"
-	"github.com/PuerkitoBio/goquery"
 	_ "github.com/lib/pq"
 	"golang.org/x/net/html"
 )
@@ -130,85 +129,8 @@ func crawlMain(baseURL string, maxPages, startOffset int, chNyaaURL chan<- strin
 				fmt.Println("------Offset maximum reached, exiting crawler loop-------")
 				return
 			}
-		} else {
-			//nyaaURL := baseURL + "/?s=id&o=asc&p=" + strconv.Itoa(nyaaPage)
-			nyaaURL := baseURL + "/?p=" + strconv.Itoa(nyaaPage)
-			nyaaPage++
-			response, err := http.Get(nyaaURL)
-			if err != nil {
-				fmt.Println("ERROR: Failed to crawl\"" + nyaaURL + "\"")
-				response.Body.Close()
-				break
-			}
-
-			b, _ := ioutil.ReadAll(response.Body)
-			tokenizer = html.NewTokenizer(strings.NewReader(string(b)))
-			response.Body.Close() //close body when func returns
-
-			//TODO: This really should be its own function
-			doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(b)))
-			if err != nil {
-				fmt.Println("Errored checking for Nyaa.si 404", err)
-				return
-			}
-
-			is404 := doc.Find("div.container:nth-child(2) > h1:nth-child(1)").Text()
-			if is404 == "404 Not Found" {
-				fmt.Println("Found 404, exiting crawler")
-				chFinished <- true
-				return
-			}
-
 		}
-		for {
-			if leave {
-				break
-			}
-			tokType := tokenizer.Next()
-			switch {
-			case tokType == html.ErrorToken:
-				//EOF
-				leave = true
-				break
-			case tokType == html.StartTagToken:
-				tok := tokenizer.Token()
-				isAnchor := tok.Data == "a"
-				if !isAnchor {
-					continue
-				}
-				ok, url := getHrefMain(tok)
 
-				//If the URL ends in t, it's a nyaa.si torrent quicklink
-				//We don't give a shit about those at this point, so skip them
-				if !ok || url[len(url)-1:] == "t" {
-					continue
-				}
-
-				//var names correspond to their respective sites
-				nyaaSi := strings.Index(url, "/view") == 0
-				anidex := strings.Index(url, "?page=torrent&id=") == 0
-				if nyaaSi {
-					for len(chNyaaURL) == cap(chAnidexURL) {
-						fmt.Println("Nyaa channel full, sleeping 3 seconds")
-						time.Sleep(time.Millisecond * 3000)
-					}
-					chNyaaURL <- baseURL + url
-					chURLCount <- 1
-					childPageCount++
-					continue
-				}
-				if anidex {
-					for len(chAnidexURL) == cap(chAnidexURL) {
-						fmt.Println("Anidex channel full, sleeping 3 seconds")
-						time.Sleep(time.Millisecond * 3000)
-					}
-					chAnidexURL <- url[17:]
-					chURLCount <- 1
-					childPageCount++
-					continue
-				}
-			}
-		}
 		fmt.Println("--Number of torrent pages collected:", childPageCount)
 		fmt.Println("--Size of anidex channel:", len(chAnidexURL))
 		fmt.Println("--Size of nyaa channel:", len(chNyaaURL))

@@ -45,7 +45,6 @@ const (
 		"Applications": []int{1, 1},
 		"Pictures":     []int{6, 16},
 		"Adult Video":  []int{2, 2},
-		"Other":        []int{7, 1},
 	}
 	anidexFileSizes = map[string]int{
 		"GB": 3,
@@ -95,7 +94,6 @@ func getAnidexMax(b []byte) int {
 
 //anidexChild crawls anidex torrent pages for relevant info
 func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
-
 	for pageID := range chPageID {
 		var info Torrent
 
