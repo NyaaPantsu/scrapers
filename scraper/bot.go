@@ -89,7 +89,7 @@ func New(conf *config.Scraper) {
 	chURLCount := make(chan int)           //To make sure we actually scraped every URL we found
 	chNyaaURL := make(chan string, 1000)   //Channel to send nyaa.si urls to, consumed in nyaa.go:nyaaChild
 	chAnidexURL := make(chan string, 1000) //Channel to send anidex urls to, consumed in anidex.go:anidexChild
-	chHTML := make(chan string, 2000)      //Channel to send HTML binary blobs, consumed in htmlparse.go:parsePageMain
+	chHTML := make(chan []byte, 2000)      //Channel to send HTML binary blobs, consumed in htmlparse.go:parsePageMain
 	chInsertCount := make(chan int)        //Channel to track how many new torrents were inserted
 	chFoundCount := make(chan int)         //Channel to track how many hashes were already in the DB
 
@@ -114,7 +114,7 @@ func New(conf *config.Scraper) {
 	if conf.Anidex {
 		go anidexParent(numAnidexOffset, numMaxPages, chHTML)
 	} else if conf.Nyaasi {
-		go nyaaParent(numNyaaOffset, numMaxPages, chHTML)
+		go nyaaParent(numNyaaOffset, numMaxPages, "https://nyaa.si", chHTML)
 	}
 	/*
 		if conf.Anidex {
@@ -127,11 +127,11 @@ func New(conf *config.Scraper) {
 	//Start child workers
 	for i := 0; i < numWorkers; i++ {
 		go anidexChild(chTorrent, chAnidexURL)
-		go nyaaChild(chTorrent, chNyaaURL)
+		//go nyaaChild(chTorrent, chNyaaURL)
 		//Buy one get two free!
+		/*go sqlWorker(chTorrent, chFinished, chInsertCount, chFoundCount)
 		go sqlWorker(chTorrent, chFinished, chInsertCount, chFoundCount)
-		go sqlWorker(chTorrent, chFinished, chInsertCount, chFoundCount)
-		go sqlWorker(chTorrent, chFinished, chInsertCount, chFoundCount)
+		go sqlWorker(chTorrent, chFinished, chInsertCount, chFoundCount)*/
 	}
 
 	leave := false

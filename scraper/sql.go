@@ -82,7 +82,9 @@ func sqlUserInsert(db *sql.DB, username string) (userID int) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	return sqlUserExists(db, username)
+	//TODO: Rewrite this in a non-stupid fashion
+	userID, _ = sqlUserExists(db, username)
+	return
 }
 
 //RandPassword generates a random password for scraped users not in the DB
@@ -122,7 +124,7 @@ func sqlWorker(chTorrent <-chan Torrent, chFinished chan<- bool, chInsertCount c
 		//Check if the user exists first
 		//Special condition for nyaa.si anonymous uploads
 		if torrent.Uploader != "Anonymous" {
-			torrent.UploaderID, userStatus = sqlUserInsert(db, torrent.Uploader)
+			torrent.UploaderID, userStatus = sqlUserExists(db, torrent.Uploader)
 		} else {
 			torrent.UploaderID = 0
 			userStatus = 3 //Anonymous username means we scraped it

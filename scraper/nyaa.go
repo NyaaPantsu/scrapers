@@ -8,41 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/html"
-
 	"github.com/PuerkitoBio/goquery"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 )
 
-const (
-	nyaaCategoryMap = map[string][]int{
-		"Art - Anime":                          []int{1, 1},
-		"Art - Doujinshi":                      []int{1, 2},
-		"Art - Games":                          []int{1, 3},
-		"Art - Manga":                          []int{1, 4},
-		"Art - Pictures":                       []int{1, 5},
-		"Real Life - Photobooks and Pictures":  []int{2, 1},
-		"Real Life - Videos":                   []int{2, 2},
-		"Anime - Anime Music Video":            []int{3, 12},
-		"Anime - English-translated":           []int{3, 5},
-		"Anime - Non-English-translated":       []int{3, 13},
-		"Anime - Raw":                          []int{3, 6},
-		"Audio - Lossless":                     []int{2, 3},
-		"Audio - Lossy":                        []int{2, 4},
-		"Literature - English-translated":      []int{4, 7},
-		"Literature - Non-English-translated":  []int{4, 14},
-		"Literature - Raw":                     []int{4, 8},
-		"Live Action - English-translated":     []int{5, 9},
-		"Live Action - Idol/Promotional Video": []int{5, 10},
-		"Live Action - Non-English-translated": []int{5, 18},
-		"Live Action - Raw":                    []int{5, 11},
-		"Pictures - Graphics":                  []int{6, 15},
-		"Pictures - Photos":                    []int{6, 16},
-		"Software - Applications":              []int{1, 1},
-		"Software - Games":                     []int{1, 2},
-	}
-)
+const ()
 
 /*
 	### Nyaa.si adult categories ###
@@ -77,7 +48,7 @@ const (
 //nyaaParent crawls nyaa.si main pages to get torrent IDs
 //startOffset is the page to start scraping on
 //pageMax is the maximum number of pages we want to scrape
-func nyaaParent(startOffset, pageMax int, chHTML chan<- string) {
+func nyaaParent(startOffset, pageMax int, baseURL string, chHTML chan<- []byte) {
 	nyaaPage := startOffset
 
 	//I'm pretty sure there's a way to do this without an iterator
@@ -91,34 +62,57 @@ func nyaaParent(startOffset, pageMax int, chHTML chan<- string) {
 			break
 		}
 		b, _ := ioutil.ReadAll(response.Body)
-		tokenizer = html.NewTokenizer(strings.NewReader(string(b)))
 		response.Body.Close()
 		//TODO: This really should be its own function
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(b)))
 		if err != nil {
 			fmt.Println("Errored checking for Nyaa.si 404", err)
-			chFinished <- true
 			return
 		}
 		is404 := doc.Find("div.container:nth-child(2) > h1:nth-child(1)").Text()
 		if is404 == "404 Not Found" {
 			fmt.Println("Found 404, exiting crawler")
-			chFinished <- true
 			return
 		}
-		chHTML <- string(b)
+		chHTML <- b
 	}
 }
 
 //nyaaChild leverages their API for torrent info
 func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
+	nyaaCategoryMap := map[string][]int{
+		"Art - Anime":                          []int{1, 1},
+		"Art - Doujinshi":                      []int{1, 2},
+		"Art - Games":                          []int{1, 3},
+		"Art - Manga":                          []int{1, 4},
+		"Art - Pictures":                       []int{1, 5},
+		"Real Life - Photobooks and Pictures":  []int{2, 1},
+		"Real Life - Videos":                   []int{2, 2},
+		"Anime - Anime Music Video":            []int{3, 12},
+		"Anime - English-translated":           []int{3, 5},
+		"Anime - Non-English-translated":       []int{3, 13},
+		"Anime - Raw":                          []int{3, 6},
+		"Audio - Lossless":                     []int{2, 3},
+		"Audio - Lossy":                        []int{2, 4},
+		"Literature - English-translated":      []int{4, 7},
+		"Literature - Non-English-translated":  []int{4, 14},
+		"Literature - Raw":                     []int{4, 8},
+		"Live Action - English-translated":     []int{5, 9},
+		"Live Action - Idol/Promotional Video": []int{5, 10},
+		"Live Action - Non-English-translated": []int{5, 18},
+		"Live Action - Raw":                    []int{5, 11},
+		"Pictures - Graphics":                  []int{6, 15},
+		"Pictures - Photos":                    []int{6, 16},
+		"Software - Applications":              []int{1, 1},
+		"Software - Games":                     []int{1, 2},
+	}
 	for url := range chNyaaURL {
 		n, err := nyaaAPI(url)
 		if err != nil {
 			fmt.Println(err, "on page", url)
 		}
 
-		info := nyaaBuildStruct(n, url)
+		info := nyaaBuildStruct(n, url, nyaaCategoryMap)
 
 		if len(info.Description) < 1 {
 			info.Description = "No description found"
@@ -145,7 +139,7 @@ func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
 	}
 }
 
-func nyaaBuildStruct(n nyaaJSON, url string) (info Torrent) {
+func nyaaBuildStruct(n nyaaJSON, url string, categories map[string][]int) (info Torrent) {
 	info.Source = url
 	info.Title = n.Name
 	info.Uploader = n.Uploader
@@ -169,7 +163,7 @@ func nyaaBuildStruct(n nyaaJSON, url string) (info Torrent) {
 
 	//Join the api (sub)category with - to map it easier
 	category := n.MainCategory + " - " + n.SubCategory
-	copy(info.Category[:2], nyaaCategoryMap[category][:2])
+	copy(info.Category[:2], categories[category][:2])
 
 	//Convert the api markdown description to sanitized HTML
 	unsafe := blackfriday.MarkdownCommon([]byte(n.Description))

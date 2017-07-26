@@ -9,51 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/html"
+	//"golang.org/x/net/html"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/microcosm-cc/bluemonday"
-)
-
-const (
-	anidexAdultCategories = map[string][]int{
-		"Anime - Sub":  []int{1, 1},
-		"Anime - Raw":  []int{1, 1},
-		"Anime - Dub":  []int{1, 1},
-		"LA - Sub":     []int{2, 2},
-		"LA - Raw":     []int{2, 2},
-		"Light Novel":  []int{1, 2},
-		"Manga - TLed": []int{1, 4},
-		"Manga - Raw":  []int{1, 4},
-		"♫ - Video":    []int{1, 1},
-		"Games":        []int{1, 3},
-		"Applications": []int{1, 3},
-		"Pictures":     []int{2, 1},
-		"Adult Video":  []int{2, 2},
-		"Other":        []int{7, 1},
-	}
-	anidexCategories = map[string][]int{
-		"Anime - Sub":  []int{3, 5},
-		"Anime - Raw":  []int{3, 6},
-		"Anime - Dub":  []int{3, 5},
-		"LA - Sub":     []int{5, 9},
-		"LA - Raw":     []int{5, 11},
-		"Light Novel":  []int{4, 8},
-		"Manga - TLed": []int{4, 7},
-		"Manga - Raw":  []int{4, 8},
-		"♫ - Lossy":    []int{2, 4},
-		"♫ - Lossless": []int{2, 3},
-		"♫ - Video":    []int{3, 12},
-		"Games":        []int{6, 15},
-		"Applications": []int{1, 1},
-		"Pictures":     []int{6, 16},
-		"Adult Video":  []int{2, 2},
-	}
-	anidexFileSizes = map[string]int{
-		"GB": 3,
-		"MB": 2,
-		"KB": 1,
-	}
 )
 
 /*
@@ -96,7 +55,7 @@ func getAnidexMax(b []byte) int {
 	return max
 }
 
-func anidexParent(startOffset, maxPages int, chHTML chan<- string) {
+func anidexParent(startOffset, maxPages int, chHTML chan<- []byte) {
 	anidexOffset := startOffset
 	//Do it for as many page as specified
 	for i := 0; i < maxPages; i++ {
@@ -125,12 +84,53 @@ func anidexParent(startOffset, maxPages int, chHTML chan<- string) {
 
 		//Increment our offset by 50
 		anidexOffset += 50
-		chHTML <- string(b)
+		fmt.Println("Sending to HTML parser")
+		chHTML <- b
 	}
 }
 
 //anidexChild crawls anidex torrent pages for relevant info
 func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
+	//I tried to move these maps out, but golang doesnt allow maps to be constants
+	//So here they are, in their enormous, bulky glory
+	anidexAdultCategories := map[string][]int{
+		"Anime - Sub":  []int{1, 1},
+		"Anime - Raw":  []int{1, 1},
+		"Anime - Dub":  []int{1, 1},
+		"LA - Sub":     []int{2, 2},
+		"LA - Raw":     []int{2, 2},
+		"Light Novel":  []int{1, 2},
+		"Manga - TLed": []int{1, 4},
+		"Manga - Raw":  []int{1, 4},
+		"♫ - Video":    []int{1, 1},
+		"Games":        []int{1, 3},
+		"Applications": []int{1, 3},
+		"Pictures":     []int{2, 1},
+		"Adult Video":  []int{2, 2},
+		"Other":        []int{7, 1},
+	}
+	anidexCategories := map[string][]int{
+		"Anime - Sub":  []int{3, 5},
+		"Anime - Raw":  []int{3, 6},
+		"Anime - Dub":  []int{3, 5},
+		"LA - Sub":     []int{5, 9},
+		"LA - Raw":     []int{5, 11},
+		"Light Novel":  []int{4, 8},
+		"Manga - TLed": []int{4, 7},
+		"Manga - Raw":  []int{4, 8},
+		"♫ - Lossy":    []int{2, 4},
+		"♫ - Lossless": []int{2, 3},
+		"♫ - Video":    []int{3, 12},
+		"Games":        []int{6, 15},
+		"Applications": []int{1, 1},
+		"Pictures":     []int{6, 16},
+		"Adult Video":  []int{2, 2},
+	}
+	fileSizes := map[string]int{
+		"GB": 3,
+		"MB": 2,
+		"KB": 1,
+	}
 	for pageID := range chPageID {
 		var info Torrent
 

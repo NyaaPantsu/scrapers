@@ -19,10 +19,12 @@ func getHrefMain(tok html.Token) (ok bool, href string) {
 	return
 }
 
-func parsePageMain(chHTML <-chan string, chNyaaURL, chAnidexURL chan<- string, chFin chan<- bool, chCount chan<- int) {
+func parsePageMain(chHTML <-chan []byte, chNyaaURL, chAnidexURL chan<- string, chFin chan<- bool, chCount chan<- int) {
 	var leave bool
-	for html := range chHTML {
-		tokenizer := html.NewTokenizer(strings.NewReader(html))
+	var tokenizer *html.Tokenizer
+	for b := range chHTML {
+		fmt.Println("Received HTML blob")
+		tokenizer = html.NewTokenizer(strings.NewReader(string(b)))
 		for {
 			if leave {
 				break
@@ -53,21 +55,22 @@ func parsePageMain(chHTML <-chan string, chNyaaURL, chAnidexURL chan<- string, c
 				nyaaSi := strings.Index(url, "/view") == 0
 				anidex := strings.Index(url, "?page=torrent&id=") == 0
 				if nyaaSi {
-					for len(chUrl) == cap(chUrl) {
+					for len(chNyaaURL) == cap(chNyaaURL) {
 						fmt.Println("Nyaa channel full, sleeping 3 seconds")
 						time.Sleep(time.Millisecond * 3000)
 					}
-					chNyaaURL <- baseURL + url
-					chURLCount <- 1
+					chNyaaURL <- "https://nyaa.si" + url
+					chCount <- 1
 					continue
 				}
 				if anidex {
-					for len(chURL) == cap(chURL) {
+					for len(chAnidexURL) == cap(chAnidexURL) {
 						fmt.Println("Anidex channel full, sleeping 3 seconds")
 						time.Sleep(time.Millisecond * 3000)
 					}
+					fmt.Println("Parsed! Sending to anidex channel")
 					chAnidexURL <- url[17:]
-					chURLCount <- 1
+					chCount <- 1
 					continue
 				}
 			}
