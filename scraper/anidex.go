@@ -3,10 +3,13 @@ package scraper
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/net/html"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/microcosm-cc/bluemonday"
@@ -74,6 +77,7 @@ const (
 */
 
 //getAnidexMax returns the current number of torrents available so we know when to stop increasing the offset
+//Deprecated for now
 func getAnidexMax(b []byte) int {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(b)))
 	if err != nil {
@@ -90,6 +94,39 @@ func getAnidexMax(b []byte) int {
 		return 0
 	}
 	return max
+}
+
+func anidexParent(startOffset, maxPages int, chHTML chan<- string) {
+	anidexOffset := startOffset
+	//Do it for as many page as specified
+	for i := 0; i < maxPages; i++ {
+
+		//Fetch the page at the specified offset
+		fmt.Println("Fetching anidex page offset", anidexOffset)
+		req, err := http.NewRequest("GET",
+			"https://anidex.info/ajax/page.ajax.php?page=torrents&category=0&filename=&lang_id=&r=0&b=0&order_by=upload_timestamp&order=desc&limit=50&offset="+strconv.Itoa(anidexOffset), nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		//Set it as an XML request
+		req.Header.Set("X-Requested-With", "XMLHttpRequest")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		//Read dat shit yo
+		b, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close() //We can just close the body right away since we're not doing anything with the connection afterwards
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		//Increment our offset by 50
+		anidexOffset += 50
+		chHTML <- string(b)
+	}
 }
 
 //anidexChild crawls anidex torrent pages for relevant info

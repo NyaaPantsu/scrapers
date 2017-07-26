@@ -77,7 +77,7 @@ const (
 //nyaaParent crawls nyaa.si main pages to get torrent IDs
 //startOffset is the page to start scraping on
 //pageMax is the maximum number of pages we want to scrape
-func nyaaParent(startOffset, pageMax int, chNyaaURL chan<- string, chFin chan<- bool, chCount chan<- int) {
+func nyaaParent(startOffset, pageMax int, chHTML chan<- string) {
 	nyaaPage := startOffset
 
 	//I'm pretty sure there's a way to do this without an iterator
@@ -97,6 +97,7 @@ func nyaaParent(startOffset, pageMax int, chNyaaURL chan<- string, chFin chan<- 
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(b)))
 		if err != nil {
 			fmt.Println("Errored checking for Nyaa.si 404", err)
+			chFinished <- true
 			return
 		}
 		is404 := doc.Find("div.container:nth-child(2) > h1:nth-child(1)").Text()
@@ -105,7 +106,7 @@ func nyaaParent(startOffset, pageMax int, chNyaaURL chan<- string, chFin chan<- 
 			chFinished <- true
 			return
 		}
-		parsePageMain(tokenizer, chNyaaURL, chFin, chCount)
+		chHTML <- string(b)
 	}
 }
 

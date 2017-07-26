@@ -35,6 +35,7 @@ type nyaaJSON struct {
 	URL            string `json:"url"`
 }
 
+//Stats is an internal struct in the NyaaJSON struct
 type Stats struct {
 	Downloads int `json:"downloads"`
 	Leechers  int `json:"leechers"`
