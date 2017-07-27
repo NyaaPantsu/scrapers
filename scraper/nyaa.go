@@ -2,9 +2,13 @@ package scraper
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 )
@@ -39,44 +43,45 @@ import (
 	Software - Games
 */
 
-func nyaaBuildStruct(n nyaaJSON, url string, categories map[string][]int) (info Torrent) {
+//nyaaParent crawls nyaa.si main pages to get torrent IDs
+//startOffset is the page to start scraping on
+//pageMax is the maximum number of pages we want to scrape
+func nyaaParent(startOffset, pageMax int, baseURL string, chHTML chan<- HTMLBlob) {
+	nyaaPage := startOffset
+	var Blob HTMLBlob
+	Blob.URL = baseURL
 
-	info.Source = url
-	info.Title = n.Name
-	info.Uploader = n.Uploader
-	info.UploaderID = 0
-	//info.Language = //Doesn't exist on Nyaa.si
-	info.Description = n.Description
-	info.Magnet = n.Magnet
-	info.Hash = strings.TrimSpace(n.HashHex)
-	info.Hash = strings.ToUpper(info.Hash)
-	info.FileSize = n.FileSize
-	info.Date = n.CreatedOn
-	info.Seeders = n.Stats.Seeders
-	info.Leechers = n.Stats.Leechers
-	info.Completed = n.Stats.Downloads
-
-	if strings.Contains(info.Source, "subekei") {
-		info.Adult = true
-	} else {
-		info.Adult = false
+	//I'm pretty sure there's a way to do this without an iterator
+	for i := 0; i < pageMax; i++ {
+		nyaaURL := baseURL + "/?p=" + strconv.Itoa(nyaaPage)
+		nyaaPage++
+		response, err := http.Get(nyaaURL)
+		if err != nil {
+			fmt.Println("ERROR: Failed to crawl\"" + nyaaURL + "\"")
+			response.Body.Close()
+			break
+		}
+		b, _ := ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		//TODO: This really should be its own function
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(b)))
+		if err != nil {
+			fmt.Println("Errored checking for Nyaa.si 404", err)
+			return
+		}
+		is404 := doc.Find("div.container:nth-child(2) > h1:nth-child(1)").Text()
+		if is404 == "404 Not Found" {
+			fmt.Println("Found 404, exiting crawler")
+			return
+		}
+		Blob.Raw = b
+		chHTML <- Blob
 	}
-
-	//Join the api (sub)category with - to map it easier
-	category := n.MainCategory + " - " + n.SubCategory
-	copy(info.Category[:2], categories[category][:2])
-
-	//Convert the api markdown description to sanitized HTML
-	unsafe := blackfriday.MarkdownCommon([]byte(n.Description))
-	b := bluemonday.UGCPolicy().SanitizeBytes(unsafe)
-	info.Description = string(b)
-	return
 }
 
-//nyaaChild crawls nyaa.si torrent pages for relevant info
+//nyaaChild leverages their API for torrent info
 func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
-
-	categoryInts := map[string][]int{
+	nyaaCategoryMap := map[string][]int{
 		"Art - Anime":                          []int{1, 1},
 		"Art - Doujinshi":                      []int{1, 2},
 		"Art - Games":                          []int{1, 3},
@@ -109,7 +114,7 @@ func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
 			fmt.Println(err, "on page", url)
 		}
 
-		info := nyaaBuildStruct(n, url, categoryInts)
+		info := nyaaBuildStruct(n, url, nyaaCategoryMap)
 
 		if len(info.Description) < 1 {
 			info.Description = "No description found"
@@ -121,7 +126,7 @@ func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
 
 		//If any key info was missed, send it back and rescrape it
 		if len(info.Title) < 2 || len(info.Hash) == 0 || len(info.Magnet) == 0 {
-			fmt.Println("Nyaa scrape failed, missing title hash or magnet link." +
+			fmt.Println("Nyaa scrape failed, missing title, hash, or magnet link." +
 				"Pushing to end of queue")
 			chNyaaURL <- url
 			continue
@@ -134,4 +139,37 @@ func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
 
 		chTorrent <- info
 	}
+}
+
+func nyaaBuildStruct(n nyaaJSON, url string, categories map[string][]int) (info Torrent) {
+	info.Source = url
+	info.Title = n.Name
+	info.Uploader = n.Uploader
+	info.UploaderID = 0
+	//info.Language = //Doesn't exist on Nyaa.si
+	info.Description = n.Description
+	info.Magnet = n.Magnet
+	info.Hash = strings.TrimSpace(n.HashHex)
+	info.Hash = strings.ToUpper(info.Hash)
+	info.FileSize = n.FileSize
+	info.Date = n.CreatedOn
+	info.Seeders = n.Stats.Seeders
+	info.Leechers = n.Stats.Leechers
+	info.Completed = n.Stats.Downloads
+
+	if strings.Contains(info.Source, "subekei") {
+		info.Adult = true
+	} else {
+		info.Adult = false
+	}
+
+	//Join the api (sub)category with - to map it easier
+	category := n.MainCategory + " - " + n.SubCategory
+	copy(info.Category[:2], categories[category][:2])
+
+	//Convert the api markdown description to sanitized HTML
+	unsafe := blackfriday.MarkdownCommon([]byte(n.Description))
+	b := bluemonday.UGCPolicy().SanitizeBytes(unsafe)
+	info.Description = string(b)
+	return
 }

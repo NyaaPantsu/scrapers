@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -35,6 +36,7 @@ type nyaaJSON struct {
 	URL            string `json:"url"`
 }
 
+//Stats is an internal struct in the NyaaJSON struct
 type Stats struct {
 	Downloads int `json:"downloads"`
 	Leechers  int `json:"leechers"`
@@ -57,10 +59,9 @@ func nyaaAPI(url string) (n nyaaJSON, err error) {
 		return
 	}
 
+	//Read that garbage, then unwrap it into a usable struct
 	b, _ := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(b, &n)
-	if err != nil {
-		return
-	}
+	fmt.Println(n)
 	return
 }
