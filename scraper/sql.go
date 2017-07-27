@@ -72,7 +72,6 @@ func sqlUserExists(db *sql.DB, username string) (userID, userStatus int) {
 	}
 }
 
-//TODO: returning sqlUserExists *might* cause some kind of weird stack recursion from the changes I've made
 func sqlUserInsert(db *sql.DB, username string) (userID int) {
 	sqlUserInsert := `INSERT INTO public.users (username, password, status, 
 			created_at, api_token_expiry) VALUES ($1, $2, $3, $4, $5)`
