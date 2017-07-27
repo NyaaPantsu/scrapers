@@ -29,6 +29,7 @@ func parsePageMain(chHTML <-chan HTMLBlob, chNyaaURL, chAnidexURL chan<- string,
 	var leave bool
 	var tokenizer *html.Tokenizer
 	for Blob := range chHTML {
+		leave = false
 		fmt.Println("Received HTML blob")
 		tokenizer = html.NewTokenizer(strings.NewReader(string(Blob.Raw)))
 		for {
