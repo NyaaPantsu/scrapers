@@ -89,7 +89,7 @@ func New(conf *config.Scraper) {
 	chURLCount := make(chan int)           //To make sure we actually scraped every URL we found
 	chNyaaURL := make(chan string, 1000)   //Channel to send nyaa.si urls to, consumed in nyaa.go:nyaaChild
 	chAnidexURL := make(chan string, 1000) //Channel to send anidex urls to, consumed in anidex.go:anidexChild
-	chHTML := make(chan []byte, 2000)      //Channel to send HTML binary blobs, consumed in htmlparse.go:parsePageMain
+	chHTML := make(chan HTMLBlob, 2000)       //Channel to send HTML binary blobs, consumed in htmlparse.go:parsePageMain
 	chInsertCount := make(chan int)        //Channel to track how many new torrents were inserted
 	chFoundCount := make(chan int)         //Channel to track how many hashes were already in the DB
 

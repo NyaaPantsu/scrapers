@@ -55,9 +55,11 @@ func getAnidexMax(b []byte) int {
 	return max
 }
 
-func anidexParent(startOffset, maxPages int, chHTML chan<- []byte) {
+func anidexParent(startOffset, maxPages int, chHTML chan<- HTMLBlob) {
 	anidexOffset := startOffset
 	//Do it for as many page as specified
+	var Blob HTMLBlob
+	Blob.URL = "https://anidex.info"
 	for i := 0; i < maxPages; i++ {
 
 		//Fetch the page at the specified offset
@@ -77,15 +79,15 @@ func anidexParent(startOffset, maxPages int, chHTML chan<- []byte) {
 
 		//Read dat shit yo
 		b, _ := ioutil.ReadAll(resp.Body)
-		resp.Body.Close() //We can just close the body right away since we're not doing anything with the connection afterwards
+		resp.Body.Close() //We can just close the body right away
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		//Increment our offset by 50
 		anidexOffset += 50
-		fmt.Println("Sending to HTML parser")
-		chHTML <- b
+		Blob.Raw = b
+		chHTML <- Blob
 	}
 }
 

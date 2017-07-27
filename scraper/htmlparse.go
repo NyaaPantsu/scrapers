@@ -8,6 +8,12 @@ import (
 	"golang.org/x/net/html"
 )
 
+//HTMLBlob is a duct-tape solution for passing around source URLs
+type HTMLBlob struct {
+	Raw []byte //Actual HTML binary blob
+	URL string //Source URL
+}
+
 //getHrefMain scrapes the main index listing of the page for links to torrent descriptions
 func getHrefMain(tok html.Token) (ok bool, href string) {
 	for _, a := range tok.Attr {
@@ -19,12 +25,12 @@ func getHrefMain(tok html.Token) (ok bool, href string) {
 	return
 }
 
-func parsePageMain(chHTML <-chan []byte, chNyaaURL, chAnidexURL chan<- string, chFin chan<- bool, chCount chan<- int) {
+func parsePageMain(chHTML <-chan HTMLBlob, chNyaaURL, chAnidexURL chan<- string, chFin chan<- bool, chCount chan<- int) {
 	var leave bool
 	var tokenizer *html.Tokenizer
-	for b := range chHTML {
+	for Blob := range chHTML {
 		fmt.Println("Received HTML blob")
-		tokenizer = html.NewTokenizer(strings.NewReader(string(b)))
+		tokenizer = html.NewTokenizer(strings.NewReader(string(Blob.Raw)))
 		for {
 			if leave {
 				break
@@ -59,7 +65,7 @@ func parsePageMain(chHTML <-chan []byte, chNyaaURL, chAnidexURL chan<- string, c
 						fmt.Println("Nyaa channel full, sleeping 3 seconds")
 						time.Sleep(time.Millisecond * 3000)
 					}
-					chNyaaURL <- "https://nyaa.si" + url
+					chNyaaURL <- Blob.URL + url
 					chCount <- 1
 					continue
 				}
@@ -68,7 +74,6 @@ func parsePageMain(chHTML <-chan []byte, chNyaaURL, chAnidexURL chan<- string, c
 						fmt.Println("Anidex channel full, sleeping 3 seconds")
 						time.Sleep(time.Millisecond * 3000)
 					}
-					fmt.Println("Parsed! Sending to anidex channel")
 					chAnidexURL <- url[17:]
 					chCount <- 1
 					continue

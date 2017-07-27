@@ -13,8 +13,6 @@ import (
 	"github.com/russross/blackfriday"
 )
 
-const ()
-
 /*
 	### Nyaa.si adult categories ###
 	Art - Anime
@@ -48,8 +46,10 @@ const ()
 //nyaaParent crawls nyaa.si main pages to get torrent IDs
 //startOffset is the page to start scraping on
 //pageMax is the maximum number of pages we want to scrape
-func nyaaParent(startOffset, pageMax int, baseURL string, chHTML chan<- []byte) {
+func nyaaParent(startOffset, pageMax int, baseURL string, chHTML chan<- HTMLBlob) {
 	nyaaPage := startOffset
+	var Blob HTMLBlob
+	Blob.URL = baseURL
 
 	//I'm pretty sure there's a way to do this without an iterator
 	for i := 0; i < pageMax; i++ {
@@ -74,7 +74,8 @@ func nyaaParent(startOffset, pageMax int, baseURL string, chHTML chan<- []byte) 
 			fmt.Println("Found 404, exiting crawler")
 			return
 		}
-		chHTML <- b
+		Blob.Raw = b
+		chHTML <- Blob
 	}
 }
 
@@ -106,6 +107,7 @@ func nyaaChild(chTorrent chan<- Torrent, chNyaaURL chan string) {
 		"Software - Applications":              []int{1, 1},
 		"Software - Games":                     []int{1, 2},
 	}
+
 	for url := range chNyaaURL {
 		n, err := nyaaAPI(url)
 		if err != nil {
