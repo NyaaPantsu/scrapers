@@ -110,6 +110,8 @@ func New(conf *config.Scraper) {
 	numAnidexOffset := conf.Anidex_Offset
 	numNyaaOffset := conf.Nyaasi_Offset
 
+	go parsePageMain(chHTML, chNyaaURL, chAnidexURL, chFinished, chURLCount)
+
 	//Start crawling
 	if conf.Anidex {
 		go anidexParent(numAnidexOffset, numMaxPages, chHTML)
