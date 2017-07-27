@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
-	//	"github.com/NyaaPantsu/scraper/config"
+	"github.com/NyaaPantsu/scraper/config"
 )
 
 const (
