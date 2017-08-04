@@ -109,7 +109,7 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 		"Applications": []int{1, 3},
 		"Pictures":     []int{2, 1},
 		"Adult Video":  []int{2, 2},
-		"Other":        []int{7, 1},
+		"Other":        []int{7, 1}, //Do we want to remove this too?
 	}
 	anidexCategories := map[string][]int{
 		"Anime - Sub":  []int{3, 5},
@@ -175,12 +175,12 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 		info.Leechers, _ = strconv.Atoi(strings.TrimSpace(doc.Find("td.text-danger:nth-child(2)").Text()))
 		info.Completed, _ = strconv.Atoi(strings.TrimSpace(doc.Find(".text-info").Text()))
 
-		checkAdult := strings.TrimSpace(doc.Find("table.edit:nth-child(1) > tbody:nth-child(2) > tr:nth-child(4) > td:nth-child(2) > span:nth-child(1)").Text())
-		if checkAdult == "Hentai" {
-			info.Adult = true
-		} else {
-			info.Adult = false
-		}
+		info.Adult = false
+		doc.Find("table.edit:nth-child(1) > tbody:nth-child(2) > tr:nth-child(4) > td:nth-child(2) > span").Each(func(i int, s *goquery.Selection) {
+			if s.Text() == "Hentai" {
+				info.Adult = true
+			}
+		})
 
 		category := strings.TrimSpace(doc.Find("table.edit:nth-child(1) > tbody:nth-child(2) > tr:nth-child(3) > td:nth-child(2) > div:nth-child(1)").Text())
 		if info.Adult {
