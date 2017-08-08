@@ -15,26 +15,6 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-/*
-	### Anidex categories ###
-	Anime - Sub
-	Anime - Raw
-	Anime - Dub
-	LA - Sub
-	LA - Raw
-	Light Novel
-	Manga - TLed
-	Manga - Raw
-	♫ - Lossy
-	♫ - Lossless
-	♫ - Video
-	Games
-	Applications
-	Pictures
-	Adult Video
-	Other
-*/
-
 //getAnidexMax returns the current number of torrents available so we know when to stop increasing the offset
 //Deprecated for now
 func getAnidexMax(b []byte) int {
@@ -65,7 +45,7 @@ func anidexParent(startOffset, maxPages int, chHTML chan<- HTMLBlob) {
 		//Fetch the page at the specified offset
 		fmt.Println("Fetching anidex page offset", anidexOffset)
 		req, err := http.NewRequest("GET",
-			"https://anidex.info/ajax/page.ajax.php?page=torrents&category=0&filename=&lang_id=&r=0&b=0&order_by=upload_timestamp&order=desc&limit=50&offset="+strconv.Itoa(anidexOffset), nil)
+			"https://anidex.info/?page=torrents&category=0&filename=&lang_id=&r=0&b=0&order_by=upload_timestamp&order=desc&limit=50&offset="+strconv.Itoa(anidexOffset), nil)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -95,50 +75,13 @@ func anidexParent(startOffset, maxPages int, chHTML chan<- HTMLBlob) {
 func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 	//I tried to move these maps out, but golang doesnt allow maps to be constants
 	//So here they are, in their enormous, bulky glory
-	anidexAdultCategories := map[string][]int{
-		"Anime - Sub":  []int{1, 1},
-		"Anime - Raw":  []int{1, 1},
-		"Anime - Dub":  []int{1, 1},
-		"LA - Sub":     []int{2, 2},
-		"LA - Raw":     []int{2, 2},
-		"Light Novel":  []int{1, 2},
-		"Manga - TLed": []int{1, 4},
-		"Manga - Raw":  []int{1, 4},
-		"♫ - Video":    []int{1, 1},
-		"Games":        []int{1, 3},
-		"Applications": []int{1, 3},
-		"Pictures":     []int{2, 1},
-		"Adult Video":  []int{2, 2},
-		"Other":        []int{7, 1}, //Do we want to remove this too?
-	}
-	anidexCategories := map[string][]int{
-		"Anime - Sub":  []int{3, 5},
-		"Anime - Raw":  []int{3, 6},
-		"Anime - Dub":  []int{3, 5},
-		"LA - Sub":     []int{5, 9},
-		"LA - Raw":     []int{5, 11},
-		"Light Novel":  []int{4, 8},
-		"Manga - TLed": []int{4, 7},
-		"Manga - Raw":  []int{4, 8},
-		"♫ - Lossy":    []int{2, 4},
-		"♫ - Lossless": []int{2, 3},
-		"♫ - Video":    []int{3, 12},
-		"Games":        []int{6, 15},
-		"Applications": []int{1, 1},
-		"Pictures":     []int{6, 16},
-		"Adult Video":  []int{2, 2},
-	}
-	fileSizes := map[string]int{
-		"GB": 3,
-		"MB": 2,
-		"KB": 1,
-	}
+
 	for pageID := range chPageID {
 		var info Torrent
 
 		//Try and get the page
 		req, err := http.NewRequest("GET",
-			"https://anidex.info/ajax/page.ajax.php?page=torrent&id="+pageID, nil)
+			"https://anidex.info/?page=torrent&id="+pageID, nil)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -242,4 +185,43 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 		resp.Body.Close() //Close this on every loop since we can't defer it
 	}
 	fmt.Println("Exited loop")
+}
+
+var anidexAdultCategories = map[string][]int{
+	"Anime - Sub":  []int{1, 1},
+	"Anime - Raw":  []int{1, 1},
+	"Anime - Dub":  []int{1, 1},
+	"LA - Sub":     []int{2, 2},
+	"LA - Raw":     []int{2, 2},
+	"Light Novel":  []int{1, 2},
+	"Manga - TLed": []int{1, 4},
+	"Manga - Raw":  []int{1, 4},
+	"♫ - Video":    []int{1, 1},
+	"Games":        []int{1, 3},
+	"Applications": []int{1, 3},
+	"Pictures":     []int{2, 1},
+	"Adult Video":  []int{2, 2},
+	"Other":        []int{7, 1}, //Do we want to remove this too?
+}
+var anidexCategories = map[string][]int{
+	"Anime - Sub":  []int{3, 5},
+	"Anime - Raw":  []int{3, 6},
+	"Anime - Dub":  []int{3, 5},
+	"LA - Sub":     []int{5, 9},
+	"LA - Raw":     []int{5, 11},
+	"Light Novel":  []int{4, 8},
+	"Manga - TLed": []int{4, 7},
+	"Manga - Raw":  []int{4, 8},
+	"♫ - Lossy":    []int{2, 4},
+	"♫ - Lossless": []int{2, 3},
+	"♫ - Video":    []int{3, 12},
+	"Games":        []int{6, 15},
+	"Applications": []int{1, 1},
+	"Pictures":     []int{6, 16},
+	"Adult Video":  []int{2, 2},
+}
+var fileSizes = map[string]int{
+	"GB": 3,
+	"MB": 2,
+	"KB": 1,
 }
