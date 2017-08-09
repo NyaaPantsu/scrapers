@@ -157,7 +157,7 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 		info.FileSize = int(fileFloat)
 
 		//Get and sanitize the description block for the torrent
-		descriptionHTML, err := doc.Find(".panel-body > span:nth-child(1)").Html()
+		descriptionHTML, err := doc.Find("div.edit:nth-child(2) > div:nth-child(2)").Html()
 		if err != nil {
 			fmt.Println("Error getting description HTML", err)
 		}
