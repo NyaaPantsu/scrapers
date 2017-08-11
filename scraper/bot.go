@@ -1,8 +1,11 @@
 package scraper
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/NyaaPantsu/scrapers/config"
@@ -56,6 +59,27 @@ type Torrent struct {
 	Adult       bool     //Whether it belongs to sukebei or not
 }
 
+func (t Torrent) String() string {
+	var buffer bytes.Buffer
+	buffer.WriteString(fmt.Sprintf("Source:\t%#v\n", t.Source))
+	buffer.WriteString(fmt.Sprintf("Title:\t%#v\n", t.Title))
+	buffer.WriteString(fmt.Sprintf("Uploader:\t%#v\n", t.Uploader))
+	buffer.WriteString(fmt.Sprintf("UserID:\t%#v\n", t.UploaderID))
+	buffer.WriteString(fmt.Sprintf("Category:\t%#v\n", t.Category))
+	buffer.WriteString(fmt.Sprintf("Language:\t%#v\n", t.Language))
+	buffer.WriteString(fmt.Sprintf("Description Length:\t%#v\n", len(t.Description)))
+	buffer.WriteString(fmt.Sprintf("Magnet:\t%#v\n", t.Magnet))
+	buffer.WriteString(fmt.Sprintf("Hash:\t%#v\n", t.Hash))
+	buffer.WriteString(fmt.Sprintf("FileSize:\t%#v\n", t.FileSize))
+	buffer.WriteString(fmt.Sprintf("Date:\t%#v\n", t.Date))
+	buffer.WriteString(fmt.Sprintf("Seeders:\t%#v\n", t.Seeders))
+	buffer.WriteString(fmt.Sprintf("Leechers:\t%#v\n", t.Leechers))
+	buffer.WriteString(fmt.Sprintf("Completed:\t%#v\n", t.Completed))
+	buffer.WriteString(fmt.Sprintf("Label:\t%#v\n", t.Label))
+	buffer.WriteString(fmt.Sprintf("Adult?:\t%#v\n", t.Adult))
+	return buffer.String()
+}
+
 /*
 //Leftovers from the original MainScrape method.  Unsure if these are still in use.
 f, err := os.Create(baseURL[8:] + "_endOffset.txt")
@@ -84,14 +108,15 @@ func timer(start time.Time, name string) {
 func New(conf *config.Scraper) {
 
 	//Channels
-	chFinished := make(chan bool)          //So we know when to exit
-	chTorrent := make(chan Torrent, 500)   //Where our compiled torrent info goes
-	chURLCount := make(chan int)           //To make sure we actually scraped every URL we found
-	chNyaaURL := make(chan string, 1000)   //Channel to send nyaa.si urls to, consumed in nyaa.go:nyaaChild
-	chAnidexURL := make(chan string, 1000) //Channel to send anidex urls to, consumed in anidex.go:anidexChild
-	chHTML := make(chan HTMLBlob, 2000)    //Channel to send HTML binary blobs, consumed in htmlparse.go:parsePageMain
-	chInsertCount := make(chan int)        //Channel to track how many new torrents were inserted
-	chFoundCount := make(chan int)         //Channel to track how many hashes were already in the DB
+	chFinished := make(chan bool)            //So we know when to exit
+	chTorrent := make(chan Torrent, 500)     //Where our compiled torrent info goes
+	chTorrAndStat := make(chan Torrent, 500) //"overload" channel to compile stats into torrents before insertion
+	chURLCount := make(chan int)             //To make sure we actually scraped every URL we found
+	chNyaaURL := make(chan string, 1000)     //Channel to send nyaa.si urls to, consumed in nyaa.go:nyaaChild
+	chAnidexURL := make(chan string, 1000)   //Channel to send anidex urls to, consumed in anidex.go:anidexChild
+	chHTML := make(chan HTMLBlob, 2000)      //Channel to send HTML binary blobs, consumed in htmlparse.go:parsePageMain
+	chInsertCount := make(chan int)          //Channel to track how many new torrents were inserted
+	chFoundCount := make(chan int)           //Channel to track how many hashes were already in the DB
 
 	/*
 		//Debugging garbage
@@ -123,7 +148,15 @@ func New(conf *config.Scraper) {
 	for i := 0; i < numWorkers; i++ {
 		go anidexChild(chTorrent, chAnidexURL)
 		go nyaaChild(chTorrent, chNyaaURL)
-		//Buy one get two free!
+	}
+
+	//SQl/Stat scrapers
+	if conf.getStats {
+		go statWorker(chTorrent, chTorrAndStat)
+		go sqlWorker(chTorrAndStat, chFinished, chInsertCount, chFoundCount)
+		go sqlWorker(chTorrAndStat, chFinished, chInsertCount, chFoundCount)
+		go sqlWorker(chTorrAndStat, chFinished, chInsertCount, chFoundCount)
+	} else {
 		go sqlWorker(chTorrent, chFinished, chInsertCount, chFoundCount)
 		go sqlWorker(chTorrent, chFinished, chInsertCount, chFoundCount)
 		go sqlWorker(chTorrent, chFinished, chInsertCount, chFoundCount)
