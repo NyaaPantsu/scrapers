@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -137,6 +139,7 @@ func sqlWorker(chTorrent <-chan Torrent, chFinished chan<- bool, chInsertCount c
 	fmt.Println("Connected!")
 
 	var table string
+	var scrape string
 	var userStatus int
 	for torrent := range chTorrent {
 
@@ -152,14 +155,17 @@ func sqlWorker(chTorrent <-chan Torrent, chFinished chan<- bool, chInsertCount c
 		//Determine the table we want
 		if torrent.Adult {
 			table = "public.sukebei_torrents"
+			scrape = "public.sukebei_scrape"
 		} else {
 			table = "public.torrents"
+			scrape = "public.scrape"
 		}
 
 		//If our user was scraped and the hash doesnt exist, insert
 		if userStatus == 3 && !sqlHashExists(db, torrent.Hash, table) {
 			sqlTorrentInsert(db, torrent, table)
 		}
+		sqlStatsInsert(db, torrent, scrape)
 		chInsertCount <- 1 //Tracker to ensure we've attempted every hash we find
 	}
 	fmt.Println("Exiting SQL worker")
