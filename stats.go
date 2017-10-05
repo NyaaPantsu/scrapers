@@ -10,15 +10,8 @@ import (
 	"strings"
 )
 
-type Stats struct {
-	Btih      string
-	Seeders   int
-	Leechers  int
-	Completed int
-}
-
 type TStruct struct {
-	Peers    Stats
+	Peers    goscrape.Result
 	Trackers []string
 	//Files    []metainfo.FileInfo
 	Files  []torrent.File
@@ -45,7 +38,7 @@ func udpScrape(trackers []string, hash string, chFin chan<- bool, torr *TStruct)
 	udpscrape := goscrape.NewBulk(trackers)
 	results := udpscrape.ScrapeBulk([]string{hash})
 	if results[0].Btih != "0" {
-		torr.Peers = Stats(results[0])
+		torr.Peers = goscrape.Result(results[0])
 	} else {
 		fmt.Println("Bad results: ", results[0])
 		udpScrape(trackers, hash, chFin, torr)
