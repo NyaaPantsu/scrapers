@@ -60,7 +60,7 @@ func parsePageMain(chHTML <-chan HTMLBlob, chNyaaURL, chAnidexURL chan<- string,
 				//TODO: Factor this more cleanly
 				//var names correspond to their respective sites
 				nyaaSi := strings.Index(url, "/view") == 0
-				anidex := strings.Index(url, "?page=torrent&id=") == 0
+				anidex := strings.Index(url, "/torrent") == 0
 				if nyaaSi {
 					for len(chNyaaURL) == cap(chNyaaURL) {
 						fmt.Println("Nyaa channel full, sleeping 3 seconds")
@@ -75,7 +75,7 @@ func parsePageMain(chHTML <-chan HTMLBlob, chNyaaURL, chAnidexURL chan<- string,
 						fmt.Println("Anidex channel full, sleeping 3 seconds")
 						time.Sleep(time.Millisecond * 3000)
 					}
-					chAnidexURL <- url[17:]
+					chAnidexURL <- url[10:]
 					chCount <- 1
 					continue
 				}

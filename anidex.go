@@ -75,7 +75,6 @@ func anidexParent(startOffset, maxPages int, chHTML chan<- HTMLBlob) {
 func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 	//I tried to move these maps out, but golang doesnt allow maps to be constants
 	//So here they are, in their enormous, bulky glory
-
 	for pageID := range chPageID {
 		var info Torrent
 
@@ -126,9 +125,20 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 		})
 
 		category := strings.TrimSpace(doc.Find("table.edit:nth-child(1) > tbody:nth-child(2) > tr:nth-child(3) > td:nth-child(2) > div:nth-child(1)").Text())
+		if category == "" {
+			fmt.Println("blank category")
+			resp.Body.Close()
+			continue
+		}
 		if info.Adult {
+			fmt.Println(category)
+			fmt.Println(info.Category[:2])
+			fmt.Println(anidexCategories[category][:2])
 			copy(info.Category[:2], anidexAdultCategories[category][:2])
 		} else {
+			fmt.Println(category)
+			fmt.Println(info.Category[:2])
+			fmt.Println(anidexCategories[category][:2])
 			copy(info.Category[:2], anidexCategories[category][:2])
 		}
 
@@ -180,6 +190,7 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 			fmt.Println("Torrent channel full, sleeping 3 seconds")
 			time.Sleep(time.Millisecond * 3000)
 		}
+		fmt.Println(info)
 
 		chTorrent <- info
 		resp.Body.Close() //Close this on every loop since we can't defer it

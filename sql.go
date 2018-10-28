@@ -11,9 +11,9 @@ import (
 
 const (
 	host     = "localhost"
-	port     = 9998
-	user     = "nyaapantsu"
-	password = "nyaapantsu"
+	port     = "5432"
+	user     = "postgres"
+	password = "mysecretpassword"
 	dbname   = "nyaapantsu"
 	pwChars  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
@@ -52,7 +52,7 @@ func sqlTorrentInsert(db *sql.DB, torrent Torrent, table string) {
 }
 
 func sqlStatsInsert(db *sql.DB, torrent Torrent, table string) {
-	sqlUserQuery := `SELECT torrent_id FROM public` + table + ` WHERE torrent_hash=$1;`
+	sqlUserQuery := `SELECT torrent_id FROM ` + table + ` WHERE torrent_hash=$1;`
 	row := db.QueryRow(sqlUserQuery, torrent.Hash)
 	var torrentID string
 	switch err := row.Scan(&torrentID); err {
@@ -77,7 +77,7 @@ func sqlStatsInsert(db *sql.DB, torrent Torrent, table string) {
 //If the user doesnt exist, attempts an insert
 //Returns the userID and userStatus
 func sqlUserExists(db *sql.DB, username string) (userID, userStatus int) {
-	sqlUserQuery := `SELECT user_id, status FROM public.users WHERE username=$1;`
+	sqlUserQuery := `SELECT user_id, status FROM users WHERE username=$1;`
 	row := db.QueryRow(sqlUserQuery, username)
 	switch err := row.Scan(&userID, &userStatus); err {
 	case sql.ErrNoRows:
@@ -95,7 +95,7 @@ func sqlUserExists(db *sql.DB, username string) (userID, userStatus int) {
 }
 
 func sqlUserInsert(db *sql.DB, username string) (userID int) {
-	sqlUserInsert := `INSERT INTO public.users (username, password, status,
+	sqlUserInsert := `INSERT INTO users (username, password, status,
 			created_at, api_token_expiry) VALUES ($1, $2, $3, $4, $5)`
 
 	//Status is hardcoded to 3, as that means it was a scraped user
@@ -124,9 +124,11 @@ func sqlWorker(chTorrent <-chan Torrent, chFinished chan<- bool, chInsertCount c
 	}()
 
 	//Connect to the DB
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+	psqlInfo := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
+	// psqlInfo := fmt.Sprintf("postgres://host=%s port=%d user=%s "+
+	// "password=%s dbname=%s sslmode=disable",
+	// host, port, user, password, dbname)
+	fmt.Println(psqlInfo)
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		panic(err)

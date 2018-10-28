@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+
 	"github.com/Stephen304/goscrape"
 	"github.com/anacrolix/torrent"
+
 	//	"github.com/anacrolix/torrent/metainfo"
 	"regexp"
 	"strings"
@@ -21,7 +23,7 @@ type TStruct struct {
 	Peers    Stats
 	Trackers []string
 	//Files    []metainfo.FileInfo
-	Files  []torrent.File
+	Files  []*torrent.File
 	Magnet string
 }
 

@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	nyaaUser = ""
-	nyaaPW   = ""
+	nyaaUser = "jpqstg"
+	nyaaPW   = "zeppelin"
 )
 
 type nyaaJSON struct {
