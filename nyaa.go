@@ -130,7 +130,7 @@ func nyaaBuildStruct(n nyaaJSON, url string) (info Torrent) {
 	info.Leechers = n.Stats.Leechers
 	info.Completed = n.Stats.Downloads
 
-	if strings.Contains(info.Source, "subekei") {
+	if strings.Contains(info.Source, "https://sukebei.nyaa.si") {
 		info.Adult = true
 	} else {
 		info.Adult = false

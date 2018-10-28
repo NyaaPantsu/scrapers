@@ -157,7 +157,7 @@ func main() {
 	for _, url := range seedUrls {
 		if strings.Contains(url, "anidex") {
 			go anidexParent(numAnidexOffset, numMaxPages, chHTML)
-		} else if strings.Contains(url, "sukebei.nyaa.si") {
+		} else if strings.Contains(url, "sukebei") {
 			go nyaaParent(numNyaaOffset, numMaxPages, "https://sukebei.nyaa.si", chHTML)
 
 		} else if strings.Contains(url, "nyaa.si") {

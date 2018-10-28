@@ -51,8 +51,8 @@ func sqlTorrentInsert(db *sql.DB, torrent Torrent, table string) {
 	fmt.Println("Inserted", torrent.Hash, "into DB!")
 }
 
-func sqlStatsInsert(db *sql.DB, torrent Torrent, table string) {
-	sqlUserQuery := `SELECT torrent_id FROM ` + table + ` WHERE torrent_hash=$1;`
+func sqlStatsInsert(db *sql.DB, torrent Torrent, table string, table2 string) {
+	sqlUserQuery := `SELECT torrent_id FROM ` + table2 + ` WHERE torrent_hash=$1;`
 	row := db.QueryRow(sqlUserQuery, torrent.Hash)
 	var torrentID string
 	switch err := row.Scan(&torrentID); err {
@@ -66,7 +66,7 @@ func sqlStatsInsert(db *sql.DB, torrent Torrent, table string) {
 		return
 
 	}
-	sqlStatsInsert := `INSERT INTO` + table + `(torrent_id, seeders, leechers, completed, last_scrape) values($1, $2, $3, $4, $5)`
+	sqlStatsInsert := `INSERT INTO ` + table + `(torrent_id, seeders, leechers, completed, last_scrape) values($1, $2, $3, $4, $5)`
 	_, err := db.Exec(sqlStatsInsert, torrentID, torrent.Seeders, torrent.Leechers, torrent.Completed, time.Now())
 	if err != nil {
 		fmt.Println(err)
@@ -167,7 +167,7 @@ func sqlWorker(chTorrent <-chan Torrent, chFinished chan<- bool, chInsertCount c
 		if userStatus == 3 && !sqlHashExists(db, torrent.Hash, table) {
 			sqlTorrentInsert(db, torrent, table)
 		}
-		sqlStatsInsert(db, torrent, scrape)
+		sqlStatsInsert(db, torrent, scrape, table)
 		chInsertCount <- 1 //Tracker to ensure we've attempted every hash we find
 	}
 	fmt.Println("Exiting SQL worker")
