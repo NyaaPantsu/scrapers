@@ -130,15 +130,19 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 			resp.Body.Close()
 			continue
 		}
+
+		if category == "Adult Video" {
+			info.Adult = true
+		}
 		if info.Adult {
-			fmt.Println(category)
-			fmt.Println(info.Category[:2])
-			fmt.Println(anidexCategories[category][:2])
+			// fmt.Println(category)
+			// fmt.Println(info.Category[:2])
+			// fmt.Println(anidexCategories[category][:2])
 			copy(info.Category[:2], anidexAdultCategories[category][:2])
 		} else {
-			fmt.Println(category)
-			fmt.Println(info.Category[:2])
-			fmt.Println(anidexCategories[category][:2])
+			// fmt.Println(category)
+			// fmt.Println(info.Category[:2])
+			// fmt.Println(anidexCategories[category][:2])
 			copy(info.Category[:2], anidexCategories[category][:2])
 		}
 
@@ -176,6 +180,7 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 		if len(info.Description) < 1 {
 			info.Description = "No description found"
 		}
+		info.Description = info.Description + "<br/><br/><p>Scraped from <a href=" + info.Source + ">" + info.Source + "</a></p>"
 
 		//If we're missing any of these the scrape likely went bad, send the page back into the queue
 		if len(info.Title) < 1 || len(info.Hash) == 0 || len(info.Magnet) == 0 {
@@ -190,7 +195,7 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 			fmt.Println("Torrent channel full, sleeping 3 seconds")
 			time.Sleep(time.Millisecond * 3000)
 		}
-		fmt.Println(info)
+		// fmt.Println(info)
 
 		chTorrent <- info
 		resp.Body.Close() //Close this on every loop since we can't defer it

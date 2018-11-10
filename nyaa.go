@@ -120,7 +120,7 @@ func nyaaBuildStruct(n nyaaJSON, url string) (info Torrent) {
 	info.Uploader = n.Uploader
 	info.UploaderID = 0
 	//info.Language = //Doesn't exist on Nyaa.si
-	info.Description = n.Description
+	info.Description = n.Description + "<br/><br/><p>Scraped from><a href=" + info.Source + ">" + info.Source + "</a></p>"
 	info.Magnet = n.Magnet
 	info.Hash = strings.TrimSpace(n.HashHex)
 	info.Hash = strings.ToUpper(info.Hash)

@@ -12,8 +12,8 @@ import (
 const (
 	host     = "localhost"
 	port     = "5432"
-	user     = "postgres"
-	password = "mysecretpassword"
+	user     = "nyaapantsu"
+	password = "nyaapantsu"
 	dbname   = "nyaapantsu"
 	pwChars  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
@@ -21,6 +21,7 @@ const (
 //sqlHashExists returns a boolean on whether or not the hash is already in the table
 func sqlHashExists(db *sql.DB, hash, table string) bool {
 	sqlTorrentQuery := `SELECT torrent_hash FROM ` + table + ` WHERE torrent_hash=$1;`
+	fmt.Println(sqlTorrentQuery)
 	var torrentHash string
 	row := db.QueryRow(sqlTorrentQuery, hash)
 	switch err := row.Scan(&torrentHash); err {
