@@ -197,8 +197,9 @@ func anidexChild(chTorrent chan<- Torrent, chPageID chan string) {
 		}
 		// fmt.Println(info)
 
-		chTorrent <- info
 		resp.Body.Close() //Close this on every loop since we can't defer it
+		chTorrent <- info
+		fmt.Println("test")
 	}
 	fmt.Println("Exited loop")
 }

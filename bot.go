@@ -117,10 +117,10 @@ func main() {
 	chInsertCount := make(chan int)          //Channel to track how many new torrents were inserted
 	chFoundCount := make(chan int)           //Channel to track how many hashes were already in the DB
 
+	//Debugging garbage
+	// go anidexChild(chTorrent, chAnidexURL)
+	// chAnidexURL <- "02375"
 	/*
-		//Debugging garbage
-		//go anidexChild(chTorrent, chAnidexURL)
-		//chAnidexURL <- "48882"
 		go nyaaChild(chTorrent, chNyaaURL)
 		chNyaaURL <- "https://nyaa.si/view/929072"
 		fmt.Println("Press any key to continue")
@@ -169,7 +169,7 @@ func main() {
 	//Start workers
 	for i := 0; i < numWorkers; i++ {
 		go anidexChild(chTorrent, chAnidexURL)
-		go nyaaChild(chTorrent, chNyaaURL)
+		// go nyaaChild(chTorrent, chNyaaURL)
 	}
 
 	//SQl/Stat scrapers
@@ -184,11 +184,20 @@ func main() {
 	foundCount := 0
 	for {
 		//Only break out once we receive a finished flag and we've attempted every URL we found
-		if leave && insertCount+foundCount == urlCount {
+		if leave && foundCount == urlCount {
+			close(chAnidexURL)
+			close(chNyaaURL)
+
+			fmt.Println("Finished crawling")
+			fmt.Println("Inserted", insertCount, "against", urlCount, "found URLS:\n")
+			// close(chTorrent)
+			// os.Exit(0)
 			break
 		}
 
 		select {
+		// case n := <-chTorrent:
+		// 	fmt.Println(n)
 		case n := <-chFoundCount:
 			foundCount += n
 			fmt.Println("Total pages trawled:", foundCount+insertCount)
@@ -214,4 +223,5 @@ func main() {
 	fmt.Println("Finished crawling")
 	fmt.Println("Inserted", insertCount, "against", urlCount, "found URLS:\n")
 	close(chTorrent)
+	os.Exit(0)
 }

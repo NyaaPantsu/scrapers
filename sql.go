@@ -20,6 +20,7 @@ const (
 
 //sqlHashExists returns a boolean on whether or not the hash is already in the table
 func sqlHashExists(db *sql.DB, hash, table string) bool {
+	fmt.Println("hash")
 	sqlTorrentQuery := `SELECT torrent_hash FROM ` + table + ` WHERE torrent_hash=$1;`
 	fmt.Println(sqlTorrentQuery)
 	var torrentHash string
@@ -39,6 +40,7 @@ func sqlHashExists(db *sql.DB, hash, table string) bool {
 
 //sqlTorrentInsert does what it says on the tin
 func sqlTorrentInsert(db *sql.DB, torrent Torrent, table string) {
+	fmt.Println("insert")
 	sqlTorrentInsert := `INSERT INTO ` + table + ` (torrent_name, torrent_hash,
 		category, sub_category, status, date, uploader, downloads, stardom,
 		filesize, description, hidden)
@@ -78,6 +80,7 @@ func sqlStatsInsert(db *sql.DB, torrent Torrent, table string, table2 string) {
 //If the user doesnt exist, attempts an insert
 //Returns the userID and userStatus
 func sqlUserExists(db *sql.DB, username string) (userID, userStatus int) {
+	fmt.Println("user")
 	sqlUserQuery := `SELECT user_id, status FROM users WHERE username=$1;`
 	row := db.QueryRow(sqlUserQuery, username)
 	switch err := row.Scan(&userID, &userStatus); err {
@@ -96,6 +99,7 @@ func sqlUserExists(db *sql.DB, username string) (userID, userStatus int) {
 }
 
 func sqlUserInsert(db *sql.DB, username string) (userID int) {
+	fmt.Println("user")
 	sqlUserInsert := `INSERT INTO users (username, password, status,
 			created_at, api_token_expiry) VALUES ($1, $2, $3, $4, $5)`
 
@@ -103,6 +107,7 @@ func sqlUserInsert(db *sql.DB, username string) (userID int) {
 	_, err := db.Exec(sqlUserInsert, username, RandPassword(), 3, time.Now(), time.Now())
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	//TODO: Rewrite this in a non-stupid fashion
 	userID, _ = sqlUserExists(db, username)
@@ -124,6 +129,7 @@ func sqlWorker(chTorrent <-chan Torrent, chFinished chan<- bool, chInsertCount c
 		chFinished <- true
 	}()
 
+	fmt.Println("sql")
 	//Connect to the DB
 	psqlInfo := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
 	// psqlInfo := fmt.Sprintf("postgres://host=%s port=%d user=%s "+
@@ -146,6 +152,7 @@ func sqlWorker(chTorrent <-chan Torrent, chFinished chan<- bool, chInsertCount c
 	var userStatus int
 	for torrent := range chTorrent {
 
+		fmt.Println("torrent")
 		//Check if the user exists first
 		//Special condition for nyaa.si anonymous uploads
 		if torrent.Uploader != "Anonymous" {

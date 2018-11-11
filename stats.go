@@ -3,13 +3,14 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/Stephen304/goscrape"
 	"github.com/anacrolix/torrent"
 
 	//	"github.com/anacrolix/torrent/metainfo"
 	"regexp"
-	"strings"
 )
 
 type Stats struct {
@@ -52,6 +53,7 @@ func udpScrape(trackers []string, hash string, chFin chan<- bool, torr *TStruct)
 		fmt.Println("Bad results: ", results[0])
 		udpScrape(trackers, hash, chFin, torr)
 	}
+	fmt.Println("fin")
 	chFin <- true
 }
 
@@ -71,6 +73,7 @@ func fileScrape(client *torrent.Client, torr *TStruct, chFin chan<- bool) {
 			UDP = append(UDP, tracker)
 		}
 	}
+	// UDP = append(UDP, "udp://tracker.coppersurfer.tk:6969/announce")
 	if len(UDP) != 0 {
 		go udpScrape(UDP, string(dst), chFin, torr)
 	}
@@ -78,6 +81,7 @@ func fileScrape(client *torrent.Client, torr *TStruct, chFin chan<- bool) {
 	//	torr.Files = t.UpvertedFiles()
 	torr.Files = t.Files()
 	t.Drop()
+	fmt.Println("fin2")
 	chFin <- true
 }
 
@@ -96,21 +100,41 @@ func injectStats(t *Torrent, torr *TStruct) {
 func grabEverything(client *torrent.Client, torr TStruct, t Torrent, chOut chan<- Torrent) {
 	chFin := make(chan bool)
 	go fileScrape(client, &torr, chFin)
-	for i := 0; i < 2; {
-		select {
-		case <-chFin:
-			i++
-		}
-	}
-	injectStats(&t, &torr)
+	// for i := 0; i < 2; {
+	// 	select {
+	// 	case <-chFin:
+	// 		i++
+	// 	}
+	// }
+	// injectStats(&t, &torr)
 	chOut <- t
 }
 
 func statWorker(chIn <-chan Torrent, chOut chan<- Torrent) {
 	client, _ := torrent.NewClient(nil)
 	for t := range chIn {
+		fmt.Println("stats")
 		torr := TStruct{}
-		torr.Magnet = t.Magnet
+		torr.Trackers = []string{
+			"udp://tracker.uw0.xyz:6969/announce",
+			"udp://tracker.coppersurfer.tk:6969",
+			"udp://tracker.zer0day.to:1337/announce",
+			"udp://tracker.leechers-paradise.org:6969",
+			"udp://explodie.org:6969",
+			"udp://tracker.opentrackr.org:1337",
+			"udp://tracker.internetwarriors.net:1337/announce",
+			"http://mgtracker.org:6969/announce",
+			"udp://ipv6.leechers-paradise.org:6969/announce",
+			"http://nyaa.tracker.wf:7777/announce",
+			"http://sukebei.tracker.wf:7777/announce",
+			"http://tracker.anirena.com:80/announce",
+			"http://anidex.moe:6969/announce",
+		}
+		torr.Magnet = "magnet:?xt=urn:btih:" + t.Hash + "&dn=" + url.PathEscape(t.Title)
+		for _, k := range torr.Trackers {
+			torr.Magnet = torr.Magnet + "&tr=" + k
+		}
+		// fmt.Println(torr.Magnet)
 		go grabEverything(client, torr, t, chOut)
 	}
 }
