@@ -69,7 +69,7 @@ func sqlStatsInsert(db *sql.DB, torrent Torrent, table string, table2 string) {
 		return
 
 	}
-	sqlStatsInsert := `INSERT INTO ` + table + `(torrent_id, seeders, leechers, completed, last_scrape) values($1, $2, $3, $4, $5)`
+	sqlStatsInsert := `INSERT INTO ` + table + `(torrent_id, seeders, leechers, completed, last_scrape) values($1, $2, $3, $4, $5) ON CONFLICT (torrent_id) DO UPDATE SET torrent_id=$1, seeders=$2, leechers=$3, completed=$4, last_scrape=$5`
 	_, err := db.Exec(sqlStatsInsert, torrentID, torrent.Seeders, torrent.Leechers, torrent.Completed, time.Now())
 	if err != nil {
 		fmt.Println(err)
